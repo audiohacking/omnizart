@@ -67,9 +67,13 @@ omnizart download-checkpoints
 The current implementation for the drum model has unknown bugs, preventing loss convergence when training from scratch.
 Fortunately, you can still enjoy drum transcription with the provided checkpoints.
 
-## Compatibility Issue
-Currently, Omnizart is **incompatible for ARM-based MacOS** system due to the underlying dependencies.
-More details can be found in the [issue #38](https://github.com/Music-and-Culture-Technology-Lab/omnizart/issues/38).
+## Platform Support
+Omnizart now supports **ARM-based macOS** systems (Apple Silicon M1/M2/M3) thanks to the following updates:
+- TensorFlow 2.13+ with native ARM64 support
+- DeMucs for vocal separation (supports Apple MPS)
+- Python 3.8-3.11 compatibility
+
+For more details about ARM64 support, see [issue #38](https://github.com/Music-and-Culture-Technology-Lab/omnizart/issues/38).
 
 ## Citation
 If you use this software in your work, please cite:
