@@ -49,7 +49,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install libsndfile1 ffmpeg
           pip install --upgrade pip setuptools wheel
-          pip install -r requirements_new.txt
+          pip install -r requirements.txt
           pip install .
           omnizart download-checkpoints --output-path ./
           pip install flake8 pylint pytest pytest-cov pytest-mock
@@ -79,7 +79,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install -r requirements_new.txt
+          pip install -r requirements.txt
           pip install .
       - name: Download checkpoints
         run: |

@@ -84,8 +84,19 @@ class VocalTranscription(BaseTranscription):
         logger.info("Separating vocal track from the audio...")
         try:
             # Load audio
+            if not os.path.exists(input_audio):
+                raise VocalSeparationError(f"Audio file not found: {input_audio}")
+            
             wav_full, sr = torchaudio.load(input_audio)
             
+        except RuntimeError as error:
+            raise VocalSeparationError(f"Failed to load audio file (unsupported format?): {str(error)}")
+        except VocalSeparationError:
+            raise
+        except Exception as error:
+            raise VocalSeparationError(f"Failed to load audio: {str(error)}")
+        
+        try:
             # Load Demucs model (htdemucs is the default, supports 4 stems)
             model = pretrained.get_model('htdemucs')
             model.eval()
@@ -105,7 +116,7 @@ class VocalTranscription(BaseTranscription):
             torchaudio.save(vocal_wav_path, vocals.cpu(), sr)
             
         except Exception as error:
-            raise VocalSeparationError(f"Failed to separate vocals: {str(error)}")
+            raise VocalSeparationError(f"Failed to separate vocals with DeMucs: {str(error)}")
 
         # Load the separated vocal
         wav, fs = load_audio(vocal_wav_path)
