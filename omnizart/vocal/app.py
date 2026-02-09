@@ -1,7 +1,6 @@
 import os
 import glob
 import shutil
-import subprocess
 from os.path import join as jpath
 from collections import OrderedDict
 from datetime import datetime
@@ -13,7 +12,6 @@ import torch
 import torchaudio
 from demucs import pretrained
 from demucs.apply import apply_model
-from demucs.audio import save_audio
 
 from omnizart.io import load_audio, write_yaml
 from omnizart.utils import (
@@ -97,13 +95,22 @@ class VocalTranscription(BaseTranscription):
             raise VocalSeparationError(f"Failed to load audio: {str(error)}")
         
         try:
+            # Select the best available device: MPS (Apple Silicon) > CUDA > CPU
+            if torch.backends.mps.is_available():
+                device = 'mps'
+            elif torch.cuda.is_available():
+                device = 'cuda'
+            else:
+                device = 'cpu'
+            logger.info(f"Using device: {device} for vocal separation")
+            
             # Load Demucs model (htdemucs is the default, supports 4 stems)
             model = pretrained.get_model('htdemucs')
             model.eval()
             
             # Apply model to separate sources
             with torch.no_grad():
-                sources = apply_model(model, wav_full[None], device='cpu', split=True, overlap=0.25)[0]
+                sources = apply_model(model, wav_full[None], device=device, split=True, overlap=0.25)[0]
             
             # DeMucs outputs: drums, bass, other, vocals
             # We want vocals (index 3)
@@ -394,6 +401,15 @@ def _vocal_separation(wav_list, out_folder):
 
     out_list = [jpath(out_folder, wav) for wav in wavs]
     if len(wav_list) > 0:
+        # Select the best available device: MPS (Apple Silicon) > CUDA > CPU
+        if torch.backends.mps.is_available():
+            device = 'mps'
+        elif torch.cuda.is_available():
+            device = 'cuda'
+        else:
+            device = 'cpu'
+        logger.info(f"Using device: {device} for batch vocal separation")
+        
         # Load Demucs model once for all files
         model = pretrained.get_model('htdemucs')
         model.eval()
@@ -404,7 +420,7 @@ def _vocal_separation(wav_list, out_folder):
             # Load and separate audio
             wav_full, sr = torchaudio.load(wav_path)
             with torch.no_grad():
-                sources = apply_model(model, wav_full[None], device='cpu', split=True, overlap=0.25)[0]
+                sources = apply_model(model, wav_full[None], device=device, split=True, overlap=0.25)[0]
             
             # Extract vocals (index 3 in htdemucs output)
             vocals = sources[3]

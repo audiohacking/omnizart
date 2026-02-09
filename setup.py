@@ -71,13 +71,13 @@ install_requires = \
  'pyfluidsynth>=1.3.0',
  'pyyaml>=6.0',
  'demucs>=4.0.0',
- 'tensorflow>=2.13.0',
+ 'tensorflow>=2.13.0,<2.17.0',
  'torch>=2.0.0',
  'torchaudio>=2.0.0',
  'tqdm>=4.65.0',
  'urllib3>=1.26.0',
  'vamp>=1.1.0',
- 'numpy>=1.21.0',
+ 'numpy>=1.21.0,<2.0.0',
  'scipy>=1.7.0',
  'h5py>=3.0.0']
 
