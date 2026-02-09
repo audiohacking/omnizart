@@ -10,6 +10,7 @@ import h5py
 import numpy as np
 import tensorflow as tf
 import torch
+import torchaudio
 from demucs import pretrained
 from demucs.apply import apply_model
 from demucs.audio import save_audio
@@ -83,7 +84,6 @@ class VocalTranscription(BaseTranscription):
         logger.info("Separating vocal track from the audio...")
         try:
             # Load audio
-            import torchaudio
             wav_full, sr = torchaudio.load(input_audio)
             
             # Load Demucs model (htdemucs is the default, supports 4 stems)
@@ -387,7 +387,6 @@ def _vocal_separation(wav_list, out_folder):
         model = pretrained.get_model('htdemucs')
         model.eval()
         
-        import torchaudio
         for idx, wav_path in enumerate(wav_list, 1):
             logger.info("Separation Progress: %d/%d - %s", idx, len(wav_list), wav_path)
             

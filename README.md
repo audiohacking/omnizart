@@ -71,7 +71,7 @@ Fortunately, you can still enjoy drum transcription with the provided checkpoint
 Omnizart now supports **ARM-based macOS** systems (Apple Silicon M1/M2/M3) thanks to the following updates:
 - TensorFlow 2.13+ with native ARM64 support
 - DeMucs for vocal separation (supports Apple MPS)
-- Python 3.8-3.11 compatibility
+- Python 3.8-3.10 compatibility
 
 For more details about ARM64 support, see [issue #38](https://github.com/Music-and-Culture-Technology-Lab/omnizart/issues/38).
 
