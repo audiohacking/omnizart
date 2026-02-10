@@ -53,7 +53,7 @@ install_with_poetry() {
         poetry config virtualenvs.create false
         poetry config virtualenvs.in-project false
     fi
-    poetry install --no-dev
+    poetry install --without dev
 }
 
 install_with_pip() {
