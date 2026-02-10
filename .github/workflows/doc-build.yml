@@ -50,6 +50,9 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
+      - name: Ensure poetry lock file is up to date
+        run: poetry lock --no-update
+
       - name: Install dependencies
         run: |
           sudo apt-get update
