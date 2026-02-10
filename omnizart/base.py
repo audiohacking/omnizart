@@ -63,25 +63,12 @@ class BaseTranscription(metaclass=ABCMeta):
         settings = self.setting_class(conf_path=conf_path)
 
         try:
-            # Try loading with load_model first (for .keras and .h5 files)
             model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
-        except (OSError, ValueError) as e:
-            # If it fails, check if it's a SavedModel format (Keras 3 compatibility)
-            if os.path.isdir(model_path) and os.path.exists(os.path.join(model_path, "saved_model.pb")):
-                try:
-                    # Use TF SavedModel API for Keras 3 compatibility
-                    model = tf.saved_model.load(model_path)
-                    logger.info("Loaded SavedModel format model using tf.saved_model.load")
-                except Exception:
-                    raise FileNotFoundError(
-                        f"Checkpoint file not found or incompatible: {model_path}. Perhaps not yet downloaded?\n"
-                        "Try execute 'omnizart download-checkpoints'"
-                    )
-            else:
-                raise FileNotFoundError(
-                    f"Checkpoint file not found: {model_path}/variables/variables.data*. Perhaps not yet downloaded?\n"
-                    "Try execute 'omnizart download-checkpoints'"
-                )
+        except (OSError):
+            raise FileNotFoundError(
+                f"Checkpoint file not found: {model_path}/variables/variables.data*. Perhaps not yet downloaded?\n"
+                "Try execute 'omnizart download-checkpoints'"
+            )
 
         return model, settings
 
