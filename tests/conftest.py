@@ -12,9 +12,14 @@ def checkpoint_files_exist(checkpoint_path):
     if not os.path.exists(variables_dir):
         return False
     
-    # Check for variables.data files which are required for model loading
-    data_files = [f for f in os.listdir(variables_dir) if f.startswith("variables.data")]
-    return len(data_files) > 0
+    try:
+        # Check for variables.data files which are required for model loading
+        files = os.listdir(variables_dir)
+        data_files = [f for f in files if f.startswith("variables.data")]
+        return len(data_files) > 0
+    except (OSError, FileNotFoundError):
+        # Handle race condition or permission issues
+        return False
 
 
 @pytest.fixture(autouse=True)
@@ -47,14 +52,17 @@ def skip_if_checkpoint_missing(request):
 def skip_if_mutable_sequence_error(request):
     """Skip test_extract_patch_cqt if MutableSequence import error occurs.
     
-    This is a known issue with some dependencies on Python 3.10+ where they
-    try to import MutableSequence from collections instead of collections.abc.
+    This test imports omnizart.feature.wrapper_func which in turn imports dependencies
+    that may have Python 3.10+ compatibility issues (trying to import MutableSequence
+    from collections instead of collections.abc). This is a known issue with some
+    audio processing libraries.
     """
     if request.function.__name__ != "test_extract_patch_cqt":
         return
     
     try:
-        # Try to import the module that might cause the MutableSequence error
+        # The wrapper_func module imports dependencies that may fail with MutableSequence error
+        # This import serves as a canary to detect the compatibility issue before the test runs
         from omnizart.feature import wrapper_func as wfunc  # noqa: F401
     except ImportError as e:
         if "MutableSequence" in str(e):
