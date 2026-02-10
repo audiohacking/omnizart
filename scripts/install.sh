@@ -59,7 +59,7 @@ install_with_poetry() {
 install_with_pip() {
     # Install some tricky packages that cannot be resolved by setup.py
     # and requirements.txt.
-    pip install Cython numpy==1.19.2
+    pip install Cython "numpy>=1.21.0,<2.0.0"
     pip install .
 }
 

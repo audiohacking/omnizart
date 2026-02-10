@@ -1,7 +1,6 @@
 import os
 import glob
 import shutil
-import subprocess
 from os.path import join as jpath
 from collections import OrderedDict
 from datetime import datetime
@@ -9,8 +8,10 @@ from datetime import datetime
 import h5py
 import numpy as np
 import tensorflow as tf
-from spleeter.separator import Separator
-from spleeter.utils.logging import logger as sp_logger
+import torch
+import torchaudio
+from demucs import pretrained
+from demucs.apply import apply_model
 
 from omnizart.io import load_audio, write_yaml
 from omnizart.utils import (
@@ -31,8 +32,8 @@ logger = get_logger("Vocal Transcription")
 vcapp = LazyLoader("vcapp", globals(), "omnizart.vocal_contour")
 
 
-class SpleeterError(Exception):
-    """Wrapper exception class around Spleeter errors"""
+class VocalSeparationError(Exception):
+    """Wrapper exception class around vocal separation errors"""
     pass
 
 
@@ -43,9 +44,6 @@ class VocalTranscription(BaseTranscription):
     """
     def __init__(self, conf_path=None):
         super().__init__(VocalSettings, conf_path=conf_path)
-
-        # Disable logging information of Spleeter
-        sp_logger.setLevel(40)  # logging.ERROR
 
     def transcribe(self, input_audio, model_path=None, output="./"):
         """Transcribe vocal notes in the audio.
@@ -82,15 +80,52 @@ class VocalTranscription(BaseTranscription):
         omnizart.vocal_contour.transcribe: Pitch estimation function.
         """
         logger.info("Separating vocal track from the audio...")
-        command = ["spleeter", "separate", input_audio, "-o", "./"]
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        _, error = process.communicate()
-        if process.returncode != 0:
-            raise SpleeterError(error.decode("utf-8"))
+        try:
+            # Load audio
+            if not os.path.exists(input_audio):
+                raise VocalSeparationError(f"Audio file not found: {input_audio}")
+            
+            wav_full, sr = torchaudio.load(input_audio)
+            
+        except RuntimeError as error:
+            raise VocalSeparationError(f"Failed to load audio file (unsupported format?): {str(error)}")
+        except VocalSeparationError:
+            raise
+        except Exception as error:
+            raise VocalSeparationError(f"Failed to load audio: {str(error)}")
+        
+        try:
+            # Select the best available device: MPS (Apple Silicon) > CUDA > CPU
+            if torch.backends.mps.is_available():
+                device = 'mps'
+            elif torch.cuda.is_available():
+                device = 'cuda'
+            else:
+                device = 'cpu'
+            logger.info(f"Using device: {device} for vocal separation")
+            
+            # Load Demucs model (htdemucs is the default, supports 4 stems)
+            model = pretrained.get_model('htdemucs')
+            model.eval()
+            
+            # Apply model to separate sources
+            with torch.no_grad():
+                sources = apply_model(model, wav_full[None], device=device, split=True, overlap=0.25)[0]
+            
+            # DeMucs outputs: drums, bass, other, vocals
+            # We want vocals (index 3)
+            vocals = sources[3]
+            
+            # Save to temporary file
+            folder_path = jpath("./", get_filename(input_audio))
+            ensure_path_exists(folder_path)
+            vocal_wav_path = jpath(folder_path, "vocals.wav")
+            torchaudio.save(vocal_wav_path, vocals.cpu(), sr)
+            
+        except Exception as error:
+            raise VocalSeparationError(f"Failed to separate vocals with DeMucs: {str(error)}")
 
-        # Resolve the path of separated output files
-        folder_path = jpath("./", get_filename(input_audio))
-        vocal_wav_path = jpath(folder_path, "vocals.wav")
+        # Load the separated vocal
         wav, fs = load_audio(vocal_wav_path)
 
         # Clean out the output files
@@ -200,7 +235,7 @@ class VocalTranscription(BaseTranscription):
             dataset_type.title()
         )
         # Do source separation to separate the vocal track first.
-        wav_paths = _vocal_separation([data[0] for data in train_data], jpath(dataset_path, "train_wavs_spleeter"))
+        wav_paths = _vocal_separation([data[0] for data in train_data], jpath(dataset_path, "train_wavs_demucs"))
         train_data = _validate_order_and_get_new_pair(wav_paths, train_data)
         _parallel_feature_extraction(
             train_data, label_extractor, train_feat_out_path, settings.feature, num_threads=num_threads
@@ -213,7 +248,7 @@ class VocalTranscription(BaseTranscription):
             dataset_type.title()
         )
         # Do source separation to separate the vocal track first.
-        wav_paths = _vocal_separation([data[0] for data in test_data], jpath(dataset_path, "test_wavs_spleeter"))
+        wav_paths = _vocal_separation([data[0] for data in test_data], jpath(dataset_path, "test_wavs_demucs"))
         test_data = _validate_order_and_get_new_pair(wav_paths, test_data)
         _parallel_feature_extraction(
             test_data, label_extractor, test_feat_out_path, settings.feature, num_threads=num_threads
@@ -366,19 +401,35 @@ def _vocal_separation(wav_list, out_folder):
 
     out_list = [jpath(out_folder, wav) for wav in wavs]
     if len(wav_list) > 0:
-        separator = Separator('spleeter:2stems')
-        separator._params["stft_backend"] = "librosa"  # pylint: disable=protected-access
+        # Select the best available device: MPS (Apple Silicon) > CUDA > CPU
+        if torch.backends.mps.is_available():
+            device = 'mps'
+        elif torch.cuda.is_available():
+            device = 'cuda'
+        else:
+            device = 'cpu'
+        logger.info(f"Using device: {device} for batch vocal separation")
+        
+        # Load Demucs model once for all files
+        model = pretrained.get_model('htdemucs')
+        model.eval()
+        
         for idx, wav_path in enumerate(wav_list, 1):
             logger.info("Separation Progress: %d/%d - %s", idx, len(wav_list), wav_path)
-            separator.separate_to_file(wav_path, out_folder)
-
-            # The separated tracks are stored in sub-folders.
-            # Move the vocal track to the desired folder and rename them.
-            fname, _ = os.path.splitext(os.path.basename(wav_path))
-            sep_folder = jpath(out_folder, fname)
-            vocal_track = jpath(sep_folder, "vocals.wav")
-            shutil.move(vocal_track, jpath(out_folder, f"{fname}.wav"))
-            shutil.rmtree(sep_folder)
+            
+            # Load and separate audio
+            wav_full, sr = torchaudio.load(wav_path)
+            with torch.no_grad():
+                sources = apply_model(model, wav_full[None], device=device, split=True, overlap=0.25)[0]
+            
+            # Extract vocals (index 3 in htdemucs output)
+            vocals = sources[3]
+            
+            # Save directly to output folder with original filename
+            fname = os.path.basename(wav_path)
+            out_path = jpath(out_folder, fname)
+            ensure_path_exists(out_folder)
+            torchaudio.save(out_path, vocals.cpu(), sr)
     return out_list
 
 
