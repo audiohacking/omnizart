@@ -57,7 +57,7 @@ jobs:
           ./scripts/install.sh
           pip install sphinx sphinx-press-theme sphinx-click 
           pip install sphinxcontrib-bibtex numpydoc
-      
+
       - name: Build html
         env:
           PYTHONPATH: ../
@@ -65,7 +65,7 @@ jobs:
           pwd
           cd docs
           make html
-      
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
