@@ -107,7 +107,7 @@ class BaseTranscription(metaclass=ABCMeta):
             model_dict = yaml.safe_load(yaml_content)
             json_content = json.dumps(model_dict)
             return model_from_json(json_content, custom_objects=custom_objects)
-        except (yaml.YAMLError, json.JSONDecodeError) as e:
+        except (yaml.YAMLError, TypeError, ValueError) as e:
             raise ValueError(f"Failed to load model from {arch_path}: {e}") from e
 
     def _resolve_feature_output_path(self, dataset_path, settings):  # pylint: disable=R0201
