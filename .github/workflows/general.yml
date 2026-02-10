@@ -39,7 +39,12 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install "Cython>=0.29.0"
+          # Install build dependencies first
+          pip install "Cython>=0.29.0" "numpy>=1.21.0,<2.0.0"
+          # Install packages with --no-build-isolation so they can use installed build dependencies
+          # (these will be skipped in requirements.txt since already installed)
+          pip install --no-build-isolation "madmom>=0.16.1"
+          pip install --no-build-isolation "vamp>=1.1.0"
           pip install -r requirements.txt
           pip install .
           pip install pytest pytest-cov pytest-mock
