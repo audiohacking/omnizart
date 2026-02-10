@@ -40,7 +40,9 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
+          # Install build dependencies first
           pip install "Cython>=0.29.0" "numpy>=1.21.0,<2.0.0"
+          # Install madmom with --no-build-isolation so it can use installed Cython
           pip install --no-build-isolation "madmom>=0.16.1"
           pip install -r requirements.txt
           pip install .
