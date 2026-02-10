@@ -4,7 +4,11 @@ import sys
 import pytest
 
 # Fix MutableSequence import for Python 3.10+ compatibility with older packages like madmom
-# This must be done before any imports that might use madmom
+# This monkey-patch must be done at module import time (before test collection) to ensure
+# madmom and other dependencies can import successfully. The patch is safe because:
+# 1. collections.MutableSequence is just an alias to collections.abc.MutableSequence
+# 2. This only affects the test environment, not production code
+# 3. Tests run sequentially in the same process, so the global state is consistent
 if sys.version_info >= (3, 10):
     import collections
     import collections.abc
