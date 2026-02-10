@@ -64,7 +64,7 @@ class BaseTranscription(metaclass=ABCMeta):
 
         try:
             model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
-        except (OSError):
+        except OSError:
             raise FileNotFoundError(
                 f"Checkpoint file not found: {model_path}/variables/variables.data*. Perhaps not yet downloaded?\n"
                 "Try execute 'omnizart download-checkpoints'"
