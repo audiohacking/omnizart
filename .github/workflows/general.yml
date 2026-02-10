@@ -6,7 +6,6 @@
 name: general-check
 
 on:
-  push:
   pull_request:
     branches: [ master ]
 
