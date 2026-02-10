@@ -2,6 +2,7 @@
 click>=8.0.0
 pretty_midi>=0.2.9
 librosa>=0.10.0
+Cython>=0.29.0
 madmom>=0.16.1
 pillow>=10.0.0
 pyyaml>=6.0
