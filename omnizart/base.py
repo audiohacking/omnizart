@@ -5,13 +5,15 @@ Defines common interfaces, attributes, and utilities for different tasks.
 
 import os
 import glob
+import json
 import random
 from os.path import join as jpath
 from abc import ABCMeta, abstractmethod
 
 import h5py
+import yaml
 import tensorflow as tf
-from tensorflow.keras.models import model_from_yaml
+from tensorflow.keras.models import model_from_json
 
 from omnizart import MODULE_PATH
 from omnizart.utils import get_logger, ensure_path_exists, get_filename
@@ -98,7 +100,12 @@ class BaseTranscription(metaclass=ABCMeta):
         return model_path, conf_path
 
     def _get_model_from_yaml(self, arch_path, custom_objects=None):  # pylint: disable=R0201
-        return model_from_yaml(open(arch_path).read(), custom_objects=custom_objects)
+        with open(arch_path, 'r') as f:
+            yaml_content = f.read()
+        # Convert YAML to dict, then to JSON string
+        model_dict = yaml.safe_load(yaml_content)
+        json_content = json.dumps(model_dict)
+        return model_from_json(json_content, custom_objects=custom_objects)
 
     def _resolve_feature_output_path(self, dataset_path, settings):  # pylint: disable=R0201
         if settings.dataset.feature_save_path == "+":
