@@ -43,6 +43,7 @@ jobs:
           # Install build dependencies first
           pip install "Cython>=0.29.0" "numpy>=1.21.0,<2.0.0"
           # Install madmom with --no-build-isolation so it can use installed Cython
+          # (madmom will be skipped in requirements.txt since already installed)
           pip install --no-build-isolation "madmom>=0.16.1"
           pip install -r requirements.txt
           pip install .
