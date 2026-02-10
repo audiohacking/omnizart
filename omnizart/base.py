@@ -100,12 +100,15 @@ class BaseTranscription(metaclass=ABCMeta):
         return model_path, conf_path
 
     def _get_model_from_yaml(self, arch_path, custom_objects=None):  # pylint: disable=R0201
-        with open(arch_path, 'r') as f:
-            yaml_content = f.read()
-        # Convert YAML to dict, then to JSON string
-        model_dict = yaml.safe_load(yaml_content)
-        json_content = json.dumps(model_dict)
-        return model_from_json(json_content, custom_objects=custom_objects)
+        try:
+            with open(arch_path, 'r', encoding='utf-8') as f:
+                yaml_content = f.read()
+            # Convert YAML to dict, then to JSON string
+            model_dict = yaml.safe_load(yaml_content)
+            json_content = json.dumps(model_dict)
+            return model_from_json(json_content, custom_objects=custom_objects)
+        except (yaml.YAMLError, json.JSONDecodeError) as e:
+            raise ValueError(f"Failed to load model from {arch_path}: {e}") from e
 
     def _resolve_feature_output_path(self, dataset_path, settings):  # pylint: disable=R0201
         if settings.dataset.feature_save_path == "+":
