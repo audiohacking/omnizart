@@ -1,6 +1,16 @@
 """Pytest configuration and fixtures for omnizart tests."""
 import os
+import sys
 import pytest
+
+# Fix MutableSequence import for Python 3.10+ compatibility with older packages like madmom
+# This must be done before any imports that might use madmom
+if sys.version_info >= (3, 10):
+    import collections
+    import collections.abc
+    # Monkey-patch MutableSequence back into collections for backwards compatibility
+    if not hasattr(collections, 'MutableSequence'):
+        collections.MutableSequence = collections.abc.MutableSequence
 
 
 def checkpoint_files_exist(checkpoint_path):
@@ -46,27 +56,3 @@ def skip_if_checkpoint_missing(request):
     checkpoint_path = checkpoint_mapping.get(test_module)
     if checkpoint_path and not checkpoint_files_exist(checkpoint_path):
         pytest.skip(f"Checkpoint files not available at {checkpoint_path}")
-
-
-@pytest.fixture(autouse=True)
-def skip_if_mutable_sequence_error(request):
-    """Skip test_extract_patch_cqt if MutableSequence import error occurs.
-    
-    This test imports omnizart.feature.wrapper_func which in turn imports dependencies
-    that may have Python 3.10+ compatibility issues (trying to import MutableSequence
-    from collections instead of collections.abc). This is a known issue with some
-    audio processing libraries.
-    """
-    if request.function.__name__ != "test_extract_patch_cqt":
-        return
-    
-    try:
-        # The wrapper_func module imports dependencies that may fail with MutableSequence error
-        # This import serves as a canary to detect the compatibility issue before the test runs
-        from omnizart.feature import wrapper_func as wfunc  # noqa: F401
-    except ImportError as e:
-        if "MutableSequence" in str(e):
-            pytest.skip(f"Dependency compatibility issue with Python 3.10+: {e}")
-        else:
-            # Re-raise if it's a different import error
-            raise
